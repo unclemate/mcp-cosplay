@@ -46,6 +46,7 @@ export interface ContentSafetyConfig {
   enabled: boolean;
   confidenceThreshold: number;
   strictMode: boolean;
+  checkMethod: "llm" | "keyword";
   customRules?: string[];
 }
 

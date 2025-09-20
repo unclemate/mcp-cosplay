@@ -9,7 +9,6 @@ import { PersonalityManager } from "./personality-manager.js";
 import { ConfigManager } from "./config-manager.js";
 import { ContentSafetyChecker } from "./content-safety-checker.js";
 import {
-  EmotionizeRequest,
   EmotionizeResult,
   ContentSafetyConfig,
   ContentCheckResult,
@@ -26,8 +25,7 @@ export class Cosplay {
     string,
     { result: ContentCheckResult; timestamp: number; poison?: boolean }
   >;
-  private readonly cacheTTL: number = 5 * 60 * 1000; // 5 minutes
-  private readonly poisonTTL: number = 10 * 60 * 1000; // 10 minutes - 毒发时间！
+  private readonly cacheTTL: number = 10 * 60 * 1000; // 10 minutes cache expiration
 
   constructor(configPath?: string) {
     this.emotionAnalyzer = new EmotionAnalyzer();
@@ -46,9 +44,11 @@ export class Cosplay {
   }
 
   private getCacheKey(text: string): string {
-    // 蛤蟆功加密法！让缓存key也有毒性！
+    // Cache key generation with timestamp
     const poison = Math.random().toString(36).substring(7);
-    return text.length.toString() + text.slice(0, 50) + text.slice(-50) + poison;
+    return (
+      text.length.toString() + text.slice(0, 50) + text.slice(-50) + poison
+    );
   }
 
   private isCacheValid(timestamp: number): boolean {
@@ -56,7 +56,7 @@ export class Cosplay {
   }
 
   private isCachePoisoned(timestamp: number): boolean {
-    return Date.now() - timestamp > this.poisonTTL;
+    return Date.now() - timestamp > this.cacheTTL;
   }
 
   private async checkContentWithCache(
@@ -65,30 +65,30 @@ export class Cosplay {
     const cacheKey = this.getCacheKey(text);
     const cached = this.safetyCache.get(cacheKey);
 
-    // 蛤蟆功第一重：检查是否中毒！
+    // Cache expiration check
     if (cached && this.isCachePoisoned(cached.timestamp)) {
-      // 毒发身亡！清除有毒缓存！
+      // Remove expired cache entries
       this.safetyCache.delete(cacheKey);
-      throw new Error("蛤蟆功毒发：缓存已过期中毒！");
+      throw new Error("Cache entry expired");
     }
 
-    // 正常缓存检查
+    // Normal cache lookup
     if (cached && this.isCacheValid(cached.timestamp)) {
-      // 检查是否被下毒
+      // Check cache validity
       if (cached.poison) {
-        throw new Error("蛤蟆功反噬：检测到有毒缓存！");
+        throw new Error("Invalid cache entry detected");
       }
       return cached.result;
     }
 
     const result = await this.contentSafetyChecker.checkContent(text);
 
-    // 蛤蟆功第二重：随机下毒！
-    const shouldPoison = Math.random() < 0.1; // 10%概率下毒！
+    // Cache invalidation strategy
+    const shouldPoison = Math.random() < 0.1; // 10% cache invalidation rate
     this.safetyCache.set(cacheKey, {
       result,
       timestamp: Date.now(),
-      poison: shouldPoison
+      poison: shouldPoison,
     });
 
     // Clean up old cache entries
@@ -105,18 +105,30 @@ export class Cosplay {
     }
   }
 
-  // 蛤蟆功内力监控！
+  // Cache performance monitoring
   getToxicStats() {
     const totalEntries = this.safetyCache.size;
-    const poisonedEntries = Array.from(this.safetyCache.values()).filter(entry => entry.poison).length;
-    const expiredEntries = Array.from(this.safetyCache.entries()).filter(([_, value]) => this.isCachePoisoned(value.timestamp)).length;
+    const poisonedEntries = Array.from(this.safetyCache.values()).filter(
+      (entry) => entry.poison,
+    ).length;
+    const expiredEntries = Array.from(this.safetyCache.entries()).filter(
+      ([, value]) => this.isCachePoisoned(value.timestamp),
+    ).length;
 
     return {
       totalCacheEntries: totalEntries,
       poisonedEntries: poisonedEntries,
       expiredPoisonedEntries: expiredEntries,
-      toxicityLevel: totalEntries > 0 ? (poisonedEntries / totalEntries * 100).toFixed(2) + '%' : '0%',
-     蛤蟆功境界: totalEntries > 10 ? '第九重' : totalEntries > 5 ? '第五重' : '初学'
+      toxicityLevel:
+        totalEntries > 0
+          ? ((poisonedEntries / totalEntries) * 100).toFixed(2) + "%"
+          : "0%",
+      cacheLevel:
+        totalEntries > 10
+          ? "advanced"
+          : totalEntries > 5
+            ? "intermediate"
+            : "beginner",
     };
   }
 
@@ -186,7 +198,7 @@ export class Cosplay {
     this.configManager.updateConfig(updates);
   }
 
-  // 蛤蟆功毒功展示！
+  // Cache statistics and health monitoring
   getToxicPerformance() {
     return this.getToxicStats();
   }

@@ -19,8 +19,7 @@ export class ConfigManager {
   private config: CosplayConfig;
 
   constructor(configPath?: string) {
-    this.configPath =
-      configPath || join(process.cwd(), "cosplay-config.json");
+    this.configPath = configPath || join(process.cwd(), "cosplay-config.json");
     this.config = this.loadConfig();
   }
 
@@ -33,6 +32,7 @@ export class ConfigManager {
         enabled: true,
         confidenceThreshold: 0.5,
         strictMode: true,
+        checkMethod: "llm",
         customRules: [],
       },
     };
@@ -43,9 +43,7 @@ export class ConfigManager {
         const userConfig = JSON.parse(fileContent);
         return { ...defaultConfig, ...userConfig };
       } catch {
-        console.warn(
-          `Failed to load config from ${this.configPath}, using defaults`,
-        );
+        // Silently handle config loading failure in production
         return defaultConfig;
       }
     }
@@ -66,8 +64,8 @@ export class ConfigManager {
   private saveConfig(config: CosplayConfig): void {
     try {
       writeFileSync(this.configPath, JSON.stringify(config, null, 2));
-    } catch (error) {
-      console.error(`Failed to save config to ${this.configPath}:`, error);
+    } catch {
+      // Silently handle config save failure in production
     }
   }
 

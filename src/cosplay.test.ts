@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Cosplay } from "./cosplay.js";
 import { CosplayRequest, PersonalityType } from "./types.js";
 import { existsSync, unlinkSync } from "fs";
@@ -17,6 +17,15 @@ describe("Cosplay", () => {
     }
 
     cosplay = new Cosplay(testConfigPath);
+
+    // Mock the content safety check to avoid LLM calls in tests
+    vi.spyOn(cosplay["contentSafetyChecker"], "checkContent").mockResolvedValue(
+      {
+        isViolation: false,
+        confidence: 0,
+        reason: "Test mock - content safety disabled for tests",
+      },
+    );
   });
 
   afterEach(() => {
@@ -24,6 +33,9 @@ describe("Cosplay", () => {
     if (existsSync(testConfigPath)) {
       unlinkSync(testConfigPath);
     }
+
+    // Restore all mocks
+    vi.restoreAllMocks();
   });
 
   describe("emotionizeText", () => {
@@ -338,22 +350,22 @@ describe("Cosplay", () => {
   describe("content safety integration", () => {
     it("should allow normal content during emotionize", async () => {
       const request: CosplayRequest = {
-        text: "今天天气真好",
+        text: "The weather is nice today",
         character: "enthusiastic",
         intensity: 3,
       };
 
       const result = await cosplay.cosplayText(request);
 
-      expect(result.originalText).toBe("今天天气真好");
-      expect(result.emotionizedText).toContain("今天天气真好");
+      expect(result.originalText).toBe("The weather is nice today");
+      expect(result.emotionizedText).toMatch(/weather is nice today/i);
       expect(result.emotionizedText.length).toBeGreaterThan(
-        "今天天气真好".length,
+        "The weather is nice today".length,
       );
     });
 
     it("should provide content safety check method", async () => {
-      const normalResult = await cosplay.checkContentSafety("正常文本");
+      const normalResult = await cosplay.checkContentSafety("normal text");
       expect(normalResult.isViolation).toBe(false);
     });
 

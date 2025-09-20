@@ -332,10 +332,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("MCP Cosplay server started");
+  // Server started successfully
 }
 
-main().catch((error) => {
-  console.error("Server error:", error);
+main().catch(() => {
+  // Server failed silently
   process.exit(1);
 });

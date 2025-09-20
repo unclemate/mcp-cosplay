@@ -7,7 +7,6 @@
 import { ContentCheckResult, ContentSafetyConfig } from "./types.js";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { CreateMessageResultSchema } from "@modelcontextprotocol/sdk/types.js";
-import { th } from "zod/v4/locales";
 
 // Node.js global types
 declare const setTimeout: (callback: () => void, ms: number) => number;
@@ -77,7 +76,7 @@ Requirement: Judgment should be cautious to avoid misjudging normal historical d
         },
       };
 
-      // 使用MCP Sampling机制调用LLM，蛤蟆功毒发超时！
+      // Use MCP Sampling mechanism to call LLM with timeout
       if (!this.server) {
         throw new Error("Server not initialized for content safety checking");
       }
@@ -85,8 +84,8 @@ Requirement: Judgment should be cautious to avoid misjudging normal historical d
         this.server.request(request, CreateMessageResultSchema, {}),
         new Promise<never>((_, reject) =>
           setTimeout(() => {
-            // 蛤蟆功毒发身亡！不是简单超时，是毒发！
-            reject(new Error("蛤蟆功毒发：LLM请求中毒身亡！"));
+            // Timeout handling for LLM request
+            reject(new Error("LLM request timeout"));
           }, 10000),
         ),
       ] as const);
@@ -110,10 +109,10 @@ Requirement: Judgment should be cautious to avoid misjudging normal historical d
         }
       }
 
-      throw new Error("蛤蟆功LLM检查中毒：无法解析LLM响应！");
-    } catch (error) {
-      console.error("蛤蟆功LLM检查中毒:", error);
-      throw new Error("蛤蟆功LLM检查中毒：无法解析LLM响应！");
+      throw new Error("Failed to parse LLM response");
+    } catch {
+      // Content safety check failed silently
+      throw new Error("Failed to parse LLM response");
     }
   }
 
@@ -171,11 +170,11 @@ Requirement: Judgment should be cautious to avoid misjudging normal historical d
   private extractFromText(text: string): ContentCheckResult {
     // Simple text parsing, try to extract information from non-JSON responses
     const hasViolation =
-      text.includes("违规") ||
       text.includes("violation") ||
-      text.includes("是");
+      text.includes("breach") ||
+      text.includes("violation");
     const confidenceMatch =
-      text.match(/置信度[:：]\s*(\d+\.?\d*)/i) ||
+      text.match(/confidence[:：]\s*(\d+\.?\d*)/i) ||
       text.match(/confidence[:：]\s*(\d+\.?\d*)/i);
     const confidence = confidenceMatch
       ? parseFloat(confidenceMatch[1]) / 100
@@ -184,8 +183,8 @@ Requirement: Judgment should be cautious to avoid misjudging normal historical d
     return {
       isViolation: hasViolation && confidence > 0.5,
       confidence: Math.min(confidence, 1),
-      reason: "LLM检测结果解析",
-      category: "内容安全",
+      reason: "LLM analysis result parsed",
+      category: "content-safety",
     };
   }
 
