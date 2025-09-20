@@ -1,0 +1,11 @@
+{
+  "defaultPersonality": "sarcastic",
+  "defaultIntensity": 5,
+  "maxIntensity": 5,
+  "contentSafety": {
+    "enabled": false,
+    "confidenceThreshold": 0.9,
+    "strictMode": true,
+    "customRules": []
+  }
+}
