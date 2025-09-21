@@ -2,6 +2,8 @@
 
 利用 MCP（Model Context Protocol）服务器为 LLM 的回复添加角色扮演和个性.
 
+**通信模式**：仅支持 stdio
+
 ## 安装
 
 ### 从 Smithery 安装（推荐）
@@ -62,6 +64,8 @@ npm run build
   }
 }
 ```
+
+> **注意**：此 MCP 服务器仅支持 stdio 模式通信。
 
 #### Smithery 安装（推荐）
 

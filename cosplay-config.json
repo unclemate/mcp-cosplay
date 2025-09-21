@@ -1,6 +1,6 @@
 {
   "defaultPersonality": "sarcastic",
-  "defaultIntensity": 4,
+  "defaultIntensity": 5,
   "maxIntensity": 5,
   "contentSafety": {
     "enabled": false,

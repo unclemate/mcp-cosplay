@@ -2,6 +2,8 @@
 
 An MCP (Model Context Protocol) server that adds cosplay characters and personality to LLM responses.
 
+**Communication Mode**: Stdio only
+
 ## Installation
 
 ### From Smithery (Recommended)
@@ -62,6 +64,8 @@ Add to your MCP client configuration:
   }
 }
 ```
+
+> **Note**: This MCP server only supports stdio mode communication.
 
 #### Package Installation (Recommended)
 
