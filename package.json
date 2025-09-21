@@ -1,6 +1,6 @@
 {
   "name": "mcp-cosplay",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "MCP server that adds cosplay and personality to LLM responses (stdio mode only)",
   "main": "dist/index.js",
   "bin": {
