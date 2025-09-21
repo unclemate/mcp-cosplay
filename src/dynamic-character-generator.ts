@@ -16,7 +16,7 @@ export interface CharacterGenerationResult {
 }
 
 export class DynamicCharacterGenerator {
-  private promptTemplate = `你是一个专业的角色分析专家，擅长从角色名称和描述中提取出完整的人格特征。
+  private promptTemplate = `你是一个专业的角色分析专家，擅长从角色名称和描述中提取出完整的人格特征，包括方言和语言特点。
 
 请为以下角色生成详细的人格配置，以JSON格式返回：
 
@@ -25,14 +25,14 @@ export class DynamicCharacterGenerator {
 {{#if context}}特殊上下文: {{context}}{{/if}}
 {{#if examples}}经典台词示例: {{examples}}{{/if}}
 
-请生成以下人格特征：
-1. signaturePhrases: 5个标志性台词或口头禅
-2. toneWords: 5个常用语气词
+请生成以下人格特征，特别注意考虑该角色可能具有的方言特点、地域特色或历史语言风格：
+1. signaturePhrases: 5个标志性台词或口头禅（考虑方言特色）
+2. toneWords: 5个常用语气词（考虑地方发音特点）
 3. attitude: 态度倾向 (friendly, serious, humorous, professional, enthusiastic, sarcastic, critical, contemplative等)
-4. speechPatterns: 4个表达模式特点
-5. backgroundContext: 详细背景设定 (50-100字)
+4. speechPatterns: 4个表达模式特点（包括方言表达习惯）
+5. backgroundContext: 详细背景设定 (50-100字，包括地域、时代背景)
 6. emojiPreferences: 4个偏好表情符号
-7. languageStyle: 语言风格描述
+7. languageStyle: 语言风格描述（包括方言特色）
 
 请严格按照以下JSON格式返回，不要添加其他解释：
 {

@@ -56,9 +56,8 @@ export class Cosplay {
   }
 
   private getCacheKey(text: string): string {
-    // 使用安全的哈希生成缓存键
-    const crypto = require('crypto');
-    return crypto.createHash('sha256').update(text).digest('hex').substring(0, 32);
+    // 使用简单的字符串生成缓存键
+    return text.length.toString() + '-' + text.charCodeAt(0).toString() + '-' + text.charCodeAt(Math.min(text.length - 1, 100)).toString();
   }
 
   private isCacheValid(timestamp: number): boolean {
