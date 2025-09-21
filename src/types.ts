@@ -72,6 +72,17 @@ export interface PersonalityTraits {
   emojis: string[];
 }
 
+export interface DialectConfig {
+  name: string; // 方言名称，如"广东话"、"四川话"、"东北话"等
+  region: string; // 地区，如"广东"、"四川"、"东北"等
+  characteristics: string[]; // 方言特点
+  commonPhrases: string[]; // 方言常用短语
+  pronunciationNotes: string[]; // 发音特点说明
+  slangWords: string[]; // 方言词汇
+  grammarPatterns: string[]; // 语法特点
+  exampleSentences: string[]; // 例句
+}
+
 export interface EnhancedPersonalityConfig {
   signaturePhrases: string[];
   toneWords: string[];
@@ -80,6 +91,7 @@ export interface EnhancedPersonalityConfig {
   backgroundContext: string;
   emojiPreferences: string[];
   languageStyle: string;
+  dialect?: DialectConfig; // 新增方言配置
 }
 
 export interface CharacterProfile {

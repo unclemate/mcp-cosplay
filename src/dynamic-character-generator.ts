@@ -1,4 +1,5 @@
 import { CharacterProfile, EnhancedPersonalityConfig } from "./types.js";
+import { DialectService, DialectQueryRequest } from "./dialect-service.js";
 
 export interface CharacterGenerationRequest {
   characterName: string;
@@ -44,7 +45,11 @@ export class DynamicCharacterGenerator {
   "languageStyle": "语言风格描述"
 }`;
 
-  constructor(private server?: any) {}
+  private dialectService: DialectService;
+
+  constructor(private server?: any) {
+    this.dialectService = new DialectService(server);
+  }
 
   async generateCharacter(request: CharacterGenerationRequest): Promise<CharacterGenerationResult> {
     if (!this.server) {
@@ -53,14 +58,30 @@ export class DynamicCharacterGenerator {
     }
 
     try {
-      const prompt = this.buildPrompt(request);
-      const response = await this.callLLM(prompt);
-      const personalityConfig = this.parseLLMResponse(response);
+      // 并行生成人格配置和方言配置
+      const [personalityPromise, dialectPromise] = await Promise.allSettled([
+        this.generatePersonalityConfig(request),
+        this.generateDialectConfig(request)
+      ]);
+
+      const personalityConfig = personalityPromise.status === 'fulfilled'
+        ? personalityPromise.value
+        : this.getFallbackPersonalityConfig(request);
+
+      const dialectConfig = dialectPromise.status === 'fulfilled' && dialectPromise.value.success
+        ? dialectPromise.value.dialect
+        : undefined;
+
+      // 将方言配置添加到人格配置中
+      const enhancedConfig = {
+        ...personalityConfig,
+        dialect: dialectConfig
+      };
 
       const character: CharacterProfile = {
         name: request.characterName,
         description: request.description || `角色: ${request.characterName}`,
-        personality: personalityConfig,
+        personality: enhancedConfig,
         examples: request.examples,
         category: this.inferCategory(request.characterName)
       };
@@ -73,6 +94,44 @@ export class DynamicCharacterGenerator {
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
+  }
+
+  private async generatePersonalityConfig(request: CharacterGenerationRequest): Promise<EnhancedPersonalityConfig> {
+    const prompt = this.buildPrompt(request);
+    const response = await this.callLLM(prompt);
+    return this.parseLLMResponse(response);
+  }
+
+  private async generateDialectConfig(request: CharacterGenerationRequest): Promise<any> {
+    const dialectRequest: DialectQueryRequest = {
+      characterName: request.characterName,
+      characterDescription: request.description,
+      characterBackground: request.context,
+      region: this.extractRegionFromContext(request.context)
+    };
+
+    return await this.dialectService.queryDialect(dialectRequest);
+  }
+
+  private extractRegionFromContext(context?: string): string | undefined {
+    if (!context) return undefined;
+
+    // 简单的地区提取逻辑
+    const regionKeywords = [
+      '广东', '广西', '北京', '上海', '四川', '重庆', '湖南', '湖北',
+      '江苏', '浙江', '安徽', '福建', '江西', '山东', '山西', '河南',
+      '河北', '辽宁', '吉林', '黑龙江', '陕西', '甘肃', '青海', '新疆',
+      '西藏', '云南', '贵州', '海南', '台湾', '香港', '澳门',
+      '东北', '华北', '华东', '华南', '华中', '西北', '西南'
+    ];
+
+    for (const keyword of regionKeywords) {
+      if (context.includes(keyword)) {
+        return keyword;
+      }
+    }
+
+    return undefined;
   }
 
   private buildPrompt(request: CharacterGenerationRequest): string {
@@ -185,6 +244,27 @@ export class DynamicCharacterGenerator {
     return match ? match[1].trim() : "";
   }
 
+  setServer(server: any): void {
+    this.server = server;
+    this.dialectService.setServer(server);
+  }
+
+  private getFallbackPersonalityConfig(request: CharacterGenerationRequest): EnhancedPersonalityConfig {
+    return {
+      signaturePhrases: [
+        `我是${request.characterName}`,
+        `这就是${request.characterName}的风格`,
+        `${request.characterName}告诉你`
+      ],
+      toneWords: ['嗯', '哦', '啊', '呢', '吧'],
+      attitude: 'neutral',
+      speechPatterns: ['直接表达', '第一人称'],
+      backgroundContext: `${request.characterName}的角色设定`,
+      emojiPreferences: ['😊', '🎭', '✨'],
+      languageStyle: 'standard'
+    };
+  }
+
   private generateFallbackCharacter(request: CharacterGenerationRequest): CharacterGenerationResult {
     // 基于名称生成简化的角色配置
     const name = request.characterName.toLowerCase();
@@ -203,6 +283,9 @@ export class DynamicCharacterGenerator {
       emojiPreferences = ["💰", "🎭", "👀", "🙃"];
     }
 
+    // 生成fallback方言配置
+    const fallbackDialect = this.generateFallbackDialect(request.characterName);
+
     const character: CharacterProfile = {
       name: request.characterName,
       description: request.description || `角色: ${request.characterName}`,
@@ -219,13 +302,48 @@ export class DynamicCharacterGenerator {
         speechPatterns: ["友好交流", "积极回应", "表达观点", "给出建议"],
         backgroundContext: request.description || `一个独特的角色：${request.characterName}`,
         emojiPreferences,
-        languageStyle: "自然流畅的对话风格"
+        languageStyle: "自然流畅的对话风格",
+        dialect: fallbackDialect
       },
       examples: request.examples,
       category: this.inferCategory(request.characterName)
     };
 
     return { success: true, character };
+  }
+
+  private generateFallbackDialect(characterName: string) {
+    // 基于角色名称的简单方言推测
+    const dialectMap: Record<string, any> = {
+      '洪秀全': {
+        name: '广东客家话',
+        region: '广东花县',
+        characteristics: ['客家方言特点', '古汉语保留', '语气庄重'],
+        commonPhrases: ['天父', '天国', '清妖', '万岁', '天王'],
+        slangWords: ['天父', '天国', '清妖'],
+        grammarPatterns: ['使用古典句式', '宗教用语'],
+        exampleSentences: ['天父下凡，我乃真命天子', '清妖必灭，天国必兴']
+      },
+      '孙中山': {
+        name: '广东中山话',
+        region: '广东中山',
+        characteristics: ['粤语特点', '近代汉语', '革命用语'],
+        commonPhrases: ['革命', '共和', '民国', '同志', '自由'],
+        slangWords: ['革命', '共和'],
+        grammarPatterns: ['现代汉语', '政治术语'],
+        exampleSentences: ['革命尚未成功，同志仍需努力']
+      }
+    };
+
+    return dialectMap[characterName] || {
+      name: '标准官话',
+      region: '全国',
+      characteristics: ['标准汉语'],
+      commonPhrases: ['是', '不是', '很好', '不错'],
+      slangWords: [],
+      grammarPatterns: ['现代汉语语法'],
+      exampleSentences: ['这是一个标准表达的例句']
+    };
   }
 
   private inferCategory(characterName: string): string {
@@ -257,9 +375,5 @@ export class DynamicCharacterGenerator {
       }
     }
     return "";
-  }
-
-  setServer(server: any): void {
-    this.server = server;
   }
 }

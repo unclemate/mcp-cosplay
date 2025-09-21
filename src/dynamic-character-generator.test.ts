@@ -38,8 +38,10 @@ describe('DynamicCharacterGenerator', () => {
 
       const result = await generator.generateCharacter(request);
 
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Server error');
+      // Should return fallback character instead of error
+      expect(result.success).toBe(true);
+      expect(result.character).toBeDefined();
+      expect(result.character?.name).toBe('测试角色');
     });
 
     it('should generate character with minimal request', async () => {

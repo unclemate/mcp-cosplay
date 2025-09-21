@@ -10,6 +10,7 @@ import { ConfigManager } from "./config-manager.js";
 import { ContentSafetyChecker } from "./content-safety-checker.js";
 import { DynamicCharacterGenerator } from "./dynamic-character-generator.js";
 import { CharacterGenerationRequest } from "./dynamic-character-generator.js";
+import { DialectService, DialectQueryRequest } from "./dialect-service.js";
 import {
   EmotionizeRequest,
   EmotionizeResult,
@@ -26,6 +27,7 @@ export class Cosplay {
   private configManager: ConfigManager;
   private contentSafetyChecker: ContentSafetyChecker;
   private dynamicCharacterGenerator: DynamicCharacterGenerator;
+  private dialectService: DialectService;
   private safetyCache: Map<string, { result: ContentCheckResult; timestamp: number }>;
   private readonly cacheTTL: number = 5 * 60 * 1000; // 5 minutes
   private characterCache: Map<string, { character: any; timestamp: number }> = new Map();
@@ -36,6 +38,7 @@ export class Cosplay {
     this.personalityManager = new PersonalityManager();
     this.configManager = new ConfigManager(configPath);
     this.dynamicCharacterGenerator = new DynamicCharacterGenerator();
+    this.dialectService = new DialectService();
     this.safetyCache = new Map();
 
     // Initialize content safety checker using config from config-manager
@@ -48,6 +51,8 @@ export class Cosplay {
     this.contentSafetyChecker.setServer(server);
     // Set server for dynamic character generator
     this.dynamicCharacterGenerator.setServer(server);
+    // Set server for dialect service
+    this.dialectService.setServer(server);
   }
 
   private getCacheKey(text: string): string {
@@ -329,6 +334,20 @@ export class Cosplay {
       prompt += `- 标志性台词：${enhancedConfig.signaturePhrases.join('、')}\n`;
       prompt += `- 常用语气词：${enhancedConfig.toneWords.join('、')}\n`;
       prompt += `- 表达模式：${enhancedConfig.speechPatterns.join('、')}\n`;
+
+      // 添加方言信息
+      if (enhancedConfig.dialect) {
+        const dialect = enhancedConfig.dialect;
+        prompt += `- 方言信息：${dialect.name}（${dialect.region}）\n`;
+        prompt += `- 方言特点：${dialect.characteristics.join('、')}\n`;
+        prompt += `- 方言常用短语：${dialect.commonPhrases.join('、')}\n`;
+        if (dialect.slangWords.length > 0) {
+          prompt += `- 方言词汇：${dialect.slangWords.join('、')}\n`;
+        }
+        if (dialect.grammarPatterns.length > 0) {
+          prompt += `- 方言语法特点：${dialect.grammarPatterns.join('、')}\n`;
+        }
+      }
     }
 
     prompt += `- 表现强度：${intensity}/5（强度越高，角色特征越明显）\n`;
@@ -404,12 +423,41 @@ export class Cosplay {
 
   // 新增：动态角色生成功能
   async generateCharacter(request: CharacterGenerationRequest) {
-    return await this.dynamicCharacterGenerator.generateCharacter(request);
+    // Check character cache first
+    const cacheKey = `${request.characterName}-${request.description || ''}-${request.intensity || 3}`;
+    const cached = this.characterCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.characterCacheTTL) {
+      return cached.character;
+    }
+
+    // Generate character dynamically
+    const result = await this.dynamicCharacterGenerator.generateCharacter(request);
+
+    // Cache the result if successful
+    if (result.success) {
+      this.characterCache.set(cacheKey, {
+        character: result,
+        timestamp: Date.now()
+      });
+    }
+
+    return result;
   }
 
   // 清理角色缓存
   clearCharacterCache() {
     this.characterCache.clear();
+  }
+
+  // 方言查询功能
+  async queryCharacterDialect(characterName: string, description?: string, context?: string) {
+    const request: DialectQueryRequest = {
+      characterName,
+      characterDescription: description,
+      characterBackground: context
+    };
+
+    return await this.dialectService.queryDialect(request);
   }
 
   // 获取角色缓存统计
