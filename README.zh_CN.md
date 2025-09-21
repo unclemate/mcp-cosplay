@@ -31,6 +31,8 @@ npm run build
 
 #### Claude Desktop配置
 
+添加到您的Claude Desktop配置文件（`claude_desktop_config.json`）：
+
 ```json
 {
   "mcpServers": {
@@ -42,6 +44,38 @@ npm run build
   }
 }
 ```
+
+#### Claude Code配置
+
+添加到您的Claude Code配置文件：
+
+```json
+{
+  "mcpServers": {
+    "cosplay": {
+      "command": "npx",
+      "args": ["-y", "mcp-cosplay@latest"]
+    }
+  }
+}
+```
+
+或者如果您已全局安装：
+
+```json
+{
+  "mcpServers": {
+    "cosplay": {
+      "command": "mcp-cosplay"
+    }
+  }
+}
+```
+
+**配置文件位置：**
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
 
 #### 开发模式（支持自动重载）
 
@@ -57,7 +91,7 @@ npm run build
 }
 ```
 
-> **注意**：此MCP服务器仅支持stdio模式通信。
+> **注意**：使用 `tsx` 直接运行TypeScript文件。`tsc` 只能编译TS文件为JS文件，不能直接执行。此MCP服务器仅支持stdio模式通信。
 
 #### 包安装（推荐）
 

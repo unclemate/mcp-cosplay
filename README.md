@@ -31,6 +31,8 @@ Add to your MCP client configuration:
 
 #### Claude Desktop Configuration
 
+Add to your Claude Desktop configuration file (`claude_desktop_config.json`):
+
 ```json
 {
   "mcpServers": {
@@ -42,6 +44,38 @@ Add to your MCP client configuration:
   }
 }
 ```
+
+#### Claude Code Configuration
+
+Add to your Claude Code configuration file:
+
+```json
+{
+  "mcpServers": {
+    "cosplay": {
+      "command": "npx",
+      "args": ["-y", "mcp-cosplay@latest"]
+    }
+  }
+}
+```
+
+Or if you have installed it globally:
+
+```json
+{
+  "mcpServers": {
+    "cosplay": {
+      "command": "mcp-cosplay"
+    }
+  }
+}
+```
+
+**Configuration file locations:**
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
 
 #### Development Mode (with auto-reload)
 
@@ -56,6 +90,8 @@ Add to your MCP client configuration:
   }
 }
 ```
+
+> **Note**: Use `tsx` to run TypeScript files directly. `tsc` only compiles TS to JS but cannot execute them.
 
 > **Note**: This MCP server only supports stdio mode communication.
 
