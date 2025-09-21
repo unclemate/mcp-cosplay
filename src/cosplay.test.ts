@@ -20,7 +20,7 @@ describe("Cosplay", () => {
 
     // Disable content safety for testing
     cosplay.updateContentSafetyConfig({
-      enabled: false
+      enabled: false,
     });
   });
 
@@ -35,6 +35,7 @@ describe("Cosplay", () => {
     it("should process text with default personality", async () => {
       const request: CosplayRequest = {
         text: "Your code is great",
+        isLLMContent: true,
       };
 
       const result = await cosplay.cosplayText(request);
@@ -51,6 +52,7 @@ describe("Cosplay", () => {
     it("should handle different personalities", async () => {
       const baseRequest: CosplayRequest = {
         text: "There is an error in the code",
+        isLLMContent: true,
       };
 
       const personalities: PersonalityType[] = [
@@ -85,6 +87,7 @@ describe("Cosplay", () => {
     it("should respect intensity levels", async () => {
       const baseRequest: CosplayRequest = {
         text: "The function works correctly",
+        isLLMContent: true,
       };
 
       const results = [];
@@ -111,10 +114,12 @@ describe("Cosplay", () => {
     it("should analyze sentiment correctly", async () => {
       const positiveRequest: CosplayRequest = {
         text: "This is absolutely fantastic and wonderful!",
+        isLLMContent: true,
       };
 
       const negativeRequest: CosplayRequest = {
         text: "This is terrible and horrible, I hate it",
+        isLLMContent: true,
       };
 
       const positiveResult = await cosplay.cosplayText(positiveRequest);
@@ -132,6 +137,7 @@ describe("Cosplay", () => {
     it("should handle empty text", async () => {
       const request: CosplayRequest = {
         text: "",
+        isLLMContent: true,
       };
 
       const result = await cosplay.cosplayText(request);
@@ -145,6 +151,7 @@ describe("Cosplay", () => {
       const longText = "This is a very long piece of text. ".repeat(20);
       const request: CosplayRequest = {
         text: longText,
+        isLLMContent: true,
       };
 
       const result = await cosplay.cosplayText(request);
@@ -159,6 +166,7 @@ describe("Cosplay", () => {
     it("should process text quickly", async () => {
       const request: CosplayRequest = {
         text: "Simple test text",
+        isLLMContent: true,
       };
 
       const startTime = Date.now();
@@ -172,6 +180,7 @@ describe("Cosplay", () => {
     it("should handle context parameter", async () => {
       const request: CosplayRequest = {
         text: "The code runs",
+        isLLMContent: true,
         context: "debugging session",
       };
 
@@ -185,6 +194,7 @@ describe("Cosplay", () => {
     it("should handle Unicode and emojis in input", async () => {
       const request: CosplayRequest = {
         text: "Great job! 🎉 This is awesome!",
+        isLLMContent: true,
       };
 
       const result = await cosplay.cosplayText(request);
@@ -197,6 +207,7 @@ describe("Cosplay", () => {
     it("should handle special characters", async () => {
       const request: CosplayRequest = {
         text: 'The code has a "bug" & needs fixing...',
+        isLLMContent: true,
       };
 
       const result = await cosplay.cosplayText(request);
@@ -216,7 +227,7 @@ describe("Cosplay", () => {
       expect(personalities).toContain("enthusiastic");
       expect(personalities).toContain("sarcastic");
       expect(personalities).toContain("professional");
-      expect(personalities).toHaveLength(6);
+      expect(personalities).toHaveLength(3);
     });
   });
 
@@ -263,6 +274,7 @@ describe("Cosplay", () => {
 
       const request: CosplayRequest = {
         text: "The code works",
+        isLLMContent: true,
       };
 
       const result = await cosplay.cosplayText(request);
@@ -276,6 +288,7 @@ describe("Cosplay", () => {
     it("should handle invalid intensity gracefully", async () => {
       const request: CosplayRequest = {
         text: "Test text",
+        isLLMContent: true,
         intensity: 10, // Should be clamped
       };
 
@@ -288,6 +301,7 @@ describe("Cosplay", () => {
     it("should handle negative intensity gracefully", async () => {
       const request: CosplayRequest = {
         text: "Test text",
+        isLLMContent: true,
         intensity: -5,
       };
 
@@ -301,11 +315,11 @@ describe("Cosplay", () => {
   describe("performance and reliability", () => {
     it("should handle concurrent requests", async () => {
       const requests: CosplayRequest[] = [
-        { text: "Request 1" },
-        { text: "Request 2" },
-        { text: "Request 3" },
-        { text: "Request 4" },
-        { text: "Request 5" },
+        { text: "Request 1", isLLMContent: true },
+        { text: "Request 2", isLLMContent: true },
+        { text: "Request 3", isLLMContent: true },
+        { text: "Request 4", isLLMContent: true },
+        { text: "Request 5", isLLMContent: true },
       ];
 
       const promises = requests.map((req) => cosplay.cosplayText(req));
@@ -321,6 +335,7 @@ describe("Cosplay", () => {
     it("should be consistent across multiple runs", async () => {
       const request: CosplayRequest = {
         text: "Consistent test",
+        isLLMContent: true,
         character: "professional",
         intensity: 3,
       };
@@ -343,6 +358,7 @@ describe("Cosplay", () => {
     it("should allow normal content during emotionize", async () => {
       const request: CosplayRequest = {
         text: "今天天气真好",
+        isLLMContent: true,
         character: "enthusiastic",
         intensity: 3,
       };

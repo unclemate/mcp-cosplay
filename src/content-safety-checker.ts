@@ -7,7 +7,6 @@
 import { ContentCheckResult, ContentSafetyConfig } from "./types.js";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { CreateMessageResultSchema } from "@modelcontextprotocol/sdk/types.js";
-import { th } from "zod/v4/locales";
 
 // Node.js global types
 declare const setTimeout: (callback: () => void, ms: number) => number;
@@ -114,8 +113,7 @@ Requirement: Judgment should be cautious to avoid misjudging normal historical d
       }
 
       throw new Error("Failed to parse LLM response for content safety check");
-    } catch (error) {
-      console.error("Content safety check failed:", error);
+    } catch {
       throw new Error("Content safety check failed");
     }
   }

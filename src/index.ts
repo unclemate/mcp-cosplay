@@ -41,6 +41,7 @@ const CosplayRequestSchema = z.object({
   character: z.string().min(1).optional(),
   intensity: z.number().min(0).max(5).optional(),
   context: z.string().optional(),
+  isLLMContent: z.boolean().optional(),
 });
 
 const CharacterProfileSchema = z.object({
@@ -65,7 +66,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "cosplay_text",
-        description: "Add cosplay character and personality to text. Supports both built-in personalities (enthusiastic, sarcastic, professional) and custom characters.",
+        description:
+          "Add cosplay character and personality to text. Only processes content marked as LLM-generated. Supports both built-in personalities (enthusiastic, sarcastic, professional) and custom characters.",
         inputSchema: {
           type: "object",
           properties: {
@@ -75,7 +77,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             character: {
               type: "string",
-              description: "Character name or personality type to apply. Built-in types: enthusiastic, sarcastic, professional. Custom characters can be added using add_character tool.",
+              description:
+                "Character name or personality type to apply. Built-in types: enthusiastic, sarcastic, professional. Custom characters can be added using add_character tool.",
             },
             intensity: {
               type: "number",
@@ -86,6 +89,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             context: {
               type: "string",
               description: "Optional context for better character analysis",
+            },
+            isLLMContent: {
+              type: "boolean",
+              description:
+                "Mark if the text is LLM generated content (only LLM content will be cosplayed)",
             },
           },
           required: ["text"],
@@ -101,7 +109,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_all_characters",
-        description: "Get all available character profiles including custom characters",
+        description:
+          "Get all available character profiles including custom characters",
         inputSchema: {
           type: "object",
           properties: {},
@@ -150,7 +159,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 },
                 attitude: {
                   type: "string",
-                  description: "Character attitude (e.g., superior, contemplative, critical)",
+                  description:
+                    "Character attitude (e.g., superior, contemplative, critical)",
                 },
                 speechPatterns: {
                   type: "array",
@@ -171,7 +181,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                   description: "Language style description",
                 },
               },
-              required: ["signaturePhrases", "toneWords", "attitude", "speechPatterns", "backgroundContext", "emojiPreferences", "languageStyle"],
+              required: [
+                "signaturePhrases",
+                "toneWords",
+                "attitude",
+                "speechPatterns",
+                "backgroundContext",
+                "emojiPreferences",
+                "languageStyle",
+              ],
             },
             examples: {
               type: "array",
@@ -180,7 +198,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             category: {
               type: "string",
-              description: "Character category (e.g., celebrity, historical, fictional)",
+              description:
+                "Character category (e.g., celebrity, historical, fictional)",
             },
           },
           required: ["name", "description", "personality"],
@@ -355,6 +374,41 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {},
         },
       },
+      {
+        name: "cosplay_text_simple",
+        description:
+          "Add cosplay character and personality to text and return only the processed text (no JSON output). Only processes content marked as LLM-generated.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            text: {
+              type: "string",
+              description: "The text to cosplay",
+            },
+            character: {
+              type: "string",
+              description:
+                "Character name or personality type to apply. Built-in types: enthusiastic, sarcastic, professional. Custom characters can be added using add_character tool.",
+            },
+            intensity: {
+              type: "number",
+              minimum: 0,
+              maximum: 5,
+              description: "Intensity level (0-5, default: 3)",
+            },
+            context: {
+              type: "string",
+              description: "Optional context for better character analysis",
+            },
+            isLLMContent: {
+              type: "boolean",
+              description:
+                "Mark if the text is LLM generated content (only LLM content will be cosplayed)",
+            },
+          },
+          required: ["text"],
+        },
+      },
     ],
   };
 });
@@ -368,7 +422,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const parsed = CosplayRequestSchema.parse(args);
         const result = await cosplay.cosplayText({
           text: parsed.text,
-          character: parsed.character as any,
+          character: parsed.character,
           intensity: parsed.intensity,
           context: parsed.context,
         });
@@ -644,7 +698,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error("Character name is required");
         }
 
-        const { characterName, description, context, intensity, examples } = args as any;
+        const { characterName, description, context, intensity, examples } =
+          args as {
+            characterName?: string;
+            description?: string;
+            context?: string;
+            intensity?: number;
+            examples?: string[];
+          };
         if (!characterName) {
           throw new Error("Character name is required");
         }
@@ -715,6 +776,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
+      case "cosplay_text_simple": {
+        const parsed = CosplayRequestSchema.parse(args);
+        const result = await cosplay.cosplayText({
+          text: parsed.text,
+          character: parsed.character,
+          intensity: parsed.intensity,
+          context: parsed.context,
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: result.emotionizedText,
+            },
+          ],
+        };
+      }
+
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
@@ -740,10 +820,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("MCP Cosplay server started");
+  // MCP Cosplay server started
 }
 
-main().catch((error) => {
-  console.error("Server error:", error);
+main().catch(() => {
   process.exit(1);
 });

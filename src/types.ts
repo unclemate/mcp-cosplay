@@ -26,6 +26,7 @@ export interface CosplayRequest {
   character?: CharacterType;
   intensity?: number;
   context?: string;
+  isLLMContent?: boolean; // 标记是否为LLM生成的内容
 }
 
 export interface EmotionizeResult {

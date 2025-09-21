@@ -19,8 +19,7 @@ export class ConfigManager {
   private config: CosplayConfig;
 
   constructor(configPath?: string) {
-    this.configPath =
-      configPath || join(process.cwd(), "cosplay-config.json");
+    this.configPath = configPath || join(process.cwd(), "cosplay-config.json");
     this.config = this.loadConfig();
   }
 
@@ -43,9 +42,7 @@ export class ConfigManager {
         const userConfig = JSON.parse(fileContent);
         return { ...defaultConfig, ...userConfig };
       } catch {
-        console.warn(
-          `Failed to load config from ${this.configPath}, using defaults`,
-        );
+        // Silently use defaults if config loading fails
         return defaultConfig;
       }
     }
@@ -66,8 +63,8 @@ export class ConfigManager {
   private saveConfig(config: CosplayConfig): void {
     try {
       writeFileSync(this.configPath, JSON.stringify(config, null, 2));
-    } catch (error) {
-      console.error(`Failed to save config to ${this.configPath}:`, error);
+    } catch {
+      // Silently handle config save failure
     }
   }
 
@@ -77,7 +74,11 @@ export class ConfigManager {
   ): PersonalityConfig {
     // 确保返回的type是有效的PersonalityType
     let validType: PersonalityType = this.config.defaultPersonality;
-    if (character === "enthusiastic" || character === "sarcastic" || character === "professional") {
+    if (
+      character === "enthusiastic" ||
+      character === "sarcastic" ||
+      character === "professional"
+    ) {
       validType = character as PersonalityType;
     }
 

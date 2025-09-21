@@ -12,11 +12,12 @@ import { DynamicCharacterGenerator } from "./dynamic-character-generator.js";
 import { CharacterGenerationRequest } from "./dynamic-character-generator.js";
 import { DialectService, DialectQueryRequest } from "./dialect-service.js";
 import {
-  EmotionizeRequest,
   EmotionizeResult,
   ContentSafetyConfig,
   ContentCheckResult,
   CosplayRequest,
+  CharacterProfile,
+  PersonalityType,
 } from "./types.js";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { CreateMessageResultSchema } from "@modelcontextprotocol/sdk/types.js";
@@ -28,9 +29,15 @@ export class Cosplay {
   private contentSafetyChecker: ContentSafetyChecker;
   private dynamicCharacterGenerator: DynamicCharacterGenerator;
   private dialectService: DialectService;
-  private safetyCache: Map<string, { result: ContentCheckResult; timestamp: number }>;
+  private safetyCache: Map<
+    string,
+    { result: ContentCheckResult; timestamp: number }
+  >;
   private readonly cacheTTL: number = 5 * 60 * 1000; // 5 minutes
-  private characterCache: Map<string, { character: any; timestamp: number }> = new Map();
+  private characterCache: Map<
+    string,
+    { character: CharacterProfile; timestamp: number }
+  > = new Map();
   private readonly characterCacheTTL: number = 30 * 60 * 1000; // 30 minutes
 
   constructor(configPath?: string) {
@@ -56,8 +63,14 @@ export class Cosplay {
   }
 
   private getCacheKey(text: string): string {
-    // 使用简单的字符串生成缓存键
-    return text.length.toString() + '-' + text.charCodeAt(0).toString() + '-' + text.charCodeAt(Math.min(text.length - 1, 100)).toString();
+    // Generate cache key using simple string
+    return (
+      text.length.toString() +
+      "-" +
+      text.charCodeAt(0).toString() +
+      "-" +
+      text.charCodeAt(Math.min(text.length - 1, 100)).toString()
+    );
   }
 
   private isCacheValid(timestamp: number): boolean {
@@ -70,20 +83,20 @@ export class Cosplay {
     const cacheKey = this.getCacheKey(text);
     const cached = this.safetyCache.get(cacheKey);
 
-    // 检查缓存是否有效
+    // Check if cache is valid
     if (cached && this.isCacheValid(cached.timestamp)) {
       return cached.result;
     }
 
     const result = await this.contentSafetyChecker.checkContent(text);
 
-    // 缓存结果
+    // Cache result
     this.safetyCache.set(cacheKey, {
       result,
       timestamp: Date.now(),
     });
 
-    // 清理过期缓存
+    // Clean up expired cache
     this.cleanupCache();
 
     return result;
@@ -97,24 +110,47 @@ export class Cosplay {
     }
   }
 
-  // 缓存统计信息
+  // Cache statistics
   getCacheStats() {
     const totalEntries = this.safetyCache.size;
-    const validEntries = Array.from(this.safetyCache.values()).filter(entry => this.isCacheValid(entry.timestamp)).length;
+    const validEntries = Array.from(this.safetyCache.values()).filter((entry) =>
+      this.isCacheValid(entry.timestamp),
+    ).length;
     const expiredEntries = totalEntries - validEntries;
 
     return {
       totalCacheEntries: totalEntries,
       validEntries: validEntries,
       expiredEntries: expiredEntries,
-      cacheHitRate: totalEntries > 0 ? ((validEntries / totalEntries) * 100).toFixed(2) + '%' : '0%'
+      cacheHitRate:
+        totalEntries > 0
+          ? ((validEntries / totalEntries) * 100).toFixed(2) + "%"
+          : "0%",
     };
   }
 
   async cosplayText(request: CosplayRequest): Promise<EmotionizeResult> {
     const startTime = Date.now();
 
-    // Content safety check with caching
+    // Check if content is from LLM - only process LLM content
+    if (!request.isLLMContent) {
+      // For non-LLM content, return original text without processing
+      const defaultConfig = this.configManager.createCharacterConfig(
+        "professional",
+        1, // lowest intensity
+      );
+      const emotion = this.emotionAnalyzer.analyzeSentiment(request.text);
+
+      return {
+        originalText: request.text,
+        emotionizedText: request.text, // No processing for non-LLM content
+        emotion,
+        personality: defaultConfig,
+        processingTime: Math.max(1, Date.now() - startTime),
+      };
+    }
+
+    // Content safety check with caching (only for LLM content)
     const safetyCheck = await this.checkContentWithCache(request.text);
 
     // If prohibited content is detected, throw error
@@ -125,32 +161,47 @@ export class Cosplay {
     }
 
     // Get or generate character profile
-    const generatedCharacterProfile = await this.getOrGenerateCharacter(request);
+    const generatedCharacterProfile =
+      await this.getOrGenerateCharacter(request);
 
-    // Get personality config - support both built-in and custom characters
+    // Get personality config - prioritize generated character profile
     let personality;
-    const characterProfile = this.personalityManager.getCharacterProfile(request.character || '');
+    let characterProfile = generatedCharacterProfile || undefined;
+
+    if (!characterProfile) {
+      // Fallback to existing character profile
+      characterProfile =
+        this.personalityManager.getCharacterProfile(request.character || "") ||
+        undefined;
+    }
 
     if (characterProfile) {
       // Use custom character personality config
-      personality = this.personalityManager.characterToPersonalityConfig(
-        request.character || 'sarcastic',
-        request.intensity || 3
-      ) || this.configManager.createCharacterConfig('sarcastic', request.intensity || 3);
+      personality =
+        this.personalityManager.characterToPersonalityConfig(
+          request.character,
+          request.intensity || 3,
+        ) ||
+        this.configManager.createCharacterConfig(
+          request.character as PersonalityType,
+          request.intensity || 3,
+        );
     } else {
-      // Use built-in personality config
+      // Use built-in personality config only if no character profile found
+      const config = this.configManager.getConfig();
       personality = this.configManager.createCharacterConfig(
-        request.character as any,
-        request.intensity,
+        (request.character || config.defaultPersonality) as PersonalityType,
+        request.intensity || config.defaultIntensity,
       );
     }
 
     // Use LLM to generate character-specific response
     const emotionizedText = await this.generateCharacterResponse(
       request.text,
-      request.character || 'sarcastic',
+      (request.character || "sarcastic") as string,
       request.intensity || 3,
       request.context,
+      characterProfile,
     );
 
     // Analyze sentiment from the generated text
@@ -167,19 +218,17 @@ export class Cosplay {
     };
   }
 
-  private async getOrGenerateCharacter(request: CosplayRequest): Promise<any> {
+  private async getOrGenerateCharacter(
+    request: CosplayRequest,
+  ): Promise<CharacterProfile | null> {
     if (!request.character) {
       return null;
     }
 
-    // First check if it's an existing custom character
-    const existingCharacter = this.personalityManager.getCharacterProfile(request.character);
-    if (existingCharacter) {
-      return existingCharacter;
-    }
-
     // Check if it's a built-in personality type
-    if (['enthusiastic', 'sarcastic', 'professional'].includes(request.character)) {
+    if (
+      ["enthusiastic", "sarcastic", "professional"].includes(request.character)
+    ) {
       return null; // Use built-in logic
     }
 
@@ -189,7 +238,7 @@ export class Cosplay {
       return cached.character;
     }
 
-    // Generate character dynamically
+    // Generate character dynamically for non-built-in characters
     const generationRequest: CharacterGenerationRequest = {
       characterName: request.character,
       description: request.context,
@@ -197,22 +246,30 @@ export class Cosplay {
       intensity: request.intensity,
     };
 
-    const result = await this.dynamicCharacterGenerator.generateCharacter(generationRequest);
+    try {
+      const result =
+        await this.dynamicCharacterGenerator.generateCharacter(
+          generationRequest,
+        );
 
-    if (result.success && result.character) {
-      // Cache the generated character
-      this.characterCache.set(request.character, {
-        character: result.character,
-        timestamp: Date.now()
-      });
+      if (result.success && result.character) {
+        // Cache the generated character
+        this.characterCache.set(request.character, {
+          character: result.character,
+          timestamp: Date.now(),
+        });
 
-      // Add to personality manager for future use
-      this.personalityManager.addCharacter(result.character);
+        // Add to personality manager for future use
+        this.personalityManager.addCharacter(result.character);
 
-      return result.character;
+        return result.character;
+      }
+    } catch {
+      // Silently handle character generation failure
+      return null;
     }
 
-    return null; // Fallback to built-in logic
+    return null; // Fallback to built-in logic if generation fails
   }
 
   private async generateCharacterResponse(
@@ -220,56 +277,111 @@ export class Cosplay {
     character: string,
     intensity: number,
     context?: string,
+    characterProfile?: CharacterProfile,
   ): Promise<string> {
     if (!this.contentSafetyChecker.getServer()) {
       // Fallback to character-specific method if server not available
-      const characterConfig = this.personalityManager.getCharacterEnhancedConfig(character);
+      const characterConfig =
+        this.personalityManager.getCharacterEnhancedConfig(character);
       if (characterConfig) {
-        const personality = this.personalityManager.characterToPersonalityConfig(character, intensity);
-        const emotion = this.emotionAnalyzer.analyzeSentiment(text);
+        const personality =
+          this.personalityManager.characterToPersonalityConfig(
+            character,
+            intensity,
+          );
+
+        // Emotion analysis available for future use if needed
+        // const emotion = this.emotionAnalyzer.analyzeSentiment(text);
 
         // Use character-specific personality application
         let result = text;
 
         // Add character-specific features
         if (intensity >= 3 && characterConfig.signaturePhrases.length > 0) {
-          const phrase = characterConfig.signaturePhrases[
-            Math.floor(Math.random() * characterConfig.signaturePhrases.length)
-          ];
+          const phrase =
+            characterConfig.signaturePhrases[
+              Math.floor(
+                Math.random() * characterConfig.signaturePhrases.length,
+              )
+            ];
           if (Math.random() < 0.3) {
             result = phrase + "，" + result;
           }
         }
 
         if (intensity >= 2 && characterConfig.toneWords.length > 0) {
-          const toneWord = characterConfig.toneWords[
-            Math.floor(Math.random() * characterConfig.toneWords.length)
-          ];
+          const toneWord =
+            characterConfig.toneWords[
+              Math.floor(Math.random() * characterConfig.toneWords.length)
+            ];
           if (Math.random() < 0.4) {
             result = toneWord + "，" + result;
           }
         }
 
-        if (personality && personality.useEmojis && intensity >= 4 && characterConfig.emojiPreferences.length > 0) {
-          const emoji = characterConfig.emojiPreferences[
-            Math.floor(Math.random() * characterConfig.emojiPreferences.length)
-          ];
+        if (
+          personality &&
+          personality.useEmojis &&
+          intensity >= 4 &&
+          characterConfig.emojiPreferences.length > 0
+        ) {
+          const emoji =
+            characterConfig.emojiPreferences[
+              Math.floor(
+                Math.random() * characterConfig.emojiPreferences.length,
+              )
+            ];
           if (Math.random() < 0.5) {
             result = result + " " + emoji;
           }
         }
 
+        // Add foreign character native language catchphrase feature
+        if (Math.random() < 0.2) {
+          // 20% probability
+          result = this.addNativeLanguageCatchphrase(
+            result,
+            character,
+            intensity,
+          );
+        }
+
         return result;
       } else {
         // Fallback to old method for built-in personalities
-        const personality = this.configManager.createCharacterConfig(character as any, intensity);
+        const personality = this.configManager.createCharacterConfig(
+          character as PersonalityType,
+          intensity,
+        );
         const emotion = this.emotionAnalyzer.analyzeSentiment(text);
-        return this.personalityManager.applyPersonality(text, emotion, personality);
+        let result = this.personalityManager.applyPersonality(
+          text,
+          emotion,
+          personality,
+          character,
+        );
+
+        // Add foreign character native language catchphrase feature
+        if (Math.random() < 0.2) {
+          // 20% probability
+          result = this.addNativeLanguageCatchphrase(
+            result,
+            character,
+            intensity,
+          );
+        }
+
+        return result;
       }
     }
 
-    // Build character-specific prompt
-    const characterPrompt = this.buildCharacterPrompt(character, intensity, context);
+    // Build character-specific prompt with enhanced character attributes
+    const characterPrompt = this.buildCharacterPrompt(
+      character,
+      intensity,
+      context,
+      characterProfile,
+    );
 
     const request = {
       method: "sampling/createMessage",
@@ -279,11 +391,12 @@ export class Cosplay {
             role: "user" as const,
             content: {
               type: "text" as const,
-              text: `${characterPrompt}\n\n原文：${text}\n\n请以这个角色的身份重新表达上面的内容：`,
+              text: `${characterPrompt}\n\nOriginal text: ${text}\n\nPlease re-express the above content in this character's voice:`,
             },
           },
         ],
-        systemPrompt: "你是一个专业的角色扮演助手，能够完美模仿不同角色的说话风格和特点。请根据要求的人设，以该角色的身份重新表达用户提供的文本内容。",
+        systemPrompt:
+          "You are a professional role-playing assistant who can perfectly imitate the speech styles and characteristics of different characters. Please re-express the user's provided text content according to the requested character persona.",
         maxTokens: 500,
         temperature: Math.max(0.1, intensity * 0.2), // Higher intensity = more creative
       },
@@ -291,71 +404,111 @@ export class Cosplay {
 
     try {
       const response = await Promise.race([
-        this.contentSafetyChecker.getServer()!.request(request, CreateMessageResultSchema, {}),
+        this.contentSafetyChecker
+          .getServer()
+          ?.request(request, CreateMessageResultSchema, {}),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("LLM请求超时")), 10000)
+          setTimeout(() => reject(new Error("LLM request timeout")), 10000),
         ),
       ] as const);
 
       const resultText = this.extractTextFromResponse(response);
-      return resultText || text; // Fallback to original text if generation fails
-    } catch (error) {
-      console.error("LLM character generation failed:", error);
-      // Fallback to old method
-      const personality = this.configManager.createCharacterConfig(character as any, intensity);
+
+      // Add foreign character native language catchphrase feature
+      let finalResult = resultText || text;
+      if (Math.random() < 0.2) {
+        // 20% 概率
+        finalResult = this.addNativeLanguageCatchphrase(
+          finalResult,
+          character,
+          intensity,
+        );
+      }
+
+      return finalResult;
+    } catch {
+      // LLM character generation failed, fallback to old method
+      const personality = this.configManager.createCharacterConfig(
+        character as PersonalityType,
+        intensity,
+      );
       const emotion = this.emotionAnalyzer.analyzeSentiment(text);
-      return this.personalityManager.applyPersonality(text, emotion, personality);
+      let result = this.personalityManager.applyPersonality(
+        text,
+        emotion,
+        personality,
+        character,
+      );
+
+      // Add foreign character native language catchphrase feature
+      if (Math.random() < 0.2) {
+        // 20% 概率
+        result = this.addNativeLanguageCatchphrase(
+          result,
+          character,
+          intensity,
+        );
+      }
+
+      return result;
     }
   }
 
-  private buildCharacterPrompt(character: string, intensity: number, context?: string): string {
-    // 优先尝试获取角色配置
-    const characterProfile = this.personalityManager.getCharacterProfile(character);
-    const enhancedConfig = characterProfile ?
-      this.personalityManager.getCharacterEnhancedConfig(character) :
-      this.personalityManager.getEnhancedConfig(character as any);
+  private buildCharacterPrompt(
+    character: string,
+    intensity: number,
+    context?: string,
+    characterProfile?: CharacterProfile,
+  ): string {
+    // Use passed characterProfile or get new one
+    const profile =
+      characterProfile ||
+      this.personalityManager.getCharacterProfile(character);
+    const enhancedConfig = profile
+      ? this.personalityManager.getCharacterEnhancedConfig(character)
+      : this.personalityManager.getEnhancedConfig(character as PersonalityType);
 
-    let prompt = `你扮演${character}角色，特点如下：\n`;
+    let prompt = `You are playing the ${character} character, with the following characteristics:\n`;
 
-    if (characterProfile) {
-      // 使用角色详细配置
-      prompt += `- 角色名称：${characterProfile.name}\n`;
-      prompt += `- 角色描述：${characterProfile.description}\n`;
-      if (characterProfile.category) {
-        prompt += `- 角色类别：${characterProfile.category}\n`;
+    if (profile) {
+      // Use detailed character configuration
+      prompt += `- Character Name: ${profile.name}\n`;
+      prompt += `- Character Description: ${profile.description}\n`;
+      if (profile.category) {
+        prompt += `- Character Category: ${profile.category}\n`;
       }
     }
 
     if (enhancedConfig) {
-      prompt += `- 背景设定：${enhancedConfig.backgroundContext}\n`;
-      prompt += `- 说话风格：${enhancedConfig.languageStyle}\n`;
-      prompt += `- 态度倾向：${enhancedConfig.attitude}\n`;
-      prompt += `- 标志性台词：${enhancedConfig.signaturePhrases.join('、')}\n`;
-      prompt += `- 常用语气词：${enhancedConfig.toneWords.join('、')}\n`;
-      prompt += `- 表达模式：${enhancedConfig.speechPatterns.join('、')}\n`;
+      prompt += `- Background Setting: ${enhancedConfig.backgroundContext}\n`;
+      prompt += `- Speaking Style: ${enhancedConfig.languageStyle}\n`;
+      prompt += `- Attitude Tendency: ${enhancedConfig.attitude}\n`;
+      prompt += `- Signature Lines: ${enhancedConfig.signaturePhrases.join(", ")}\n`;
+      prompt += `- Common Tone Words: ${enhancedConfig.toneWords.join(", ")}\n`;
+      prompt += `- Expression Patterns: ${enhancedConfig.speechPatterns.join(", ")}\n`;
 
-      // 添加方言信息
+      // Add dialect information
       if (enhancedConfig.dialect) {
         const dialect = enhancedConfig.dialect;
-        prompt += `- 方言信息：${dialect.name}（${dialect.region}）\n`;
-        prompt += `- 方言特点：${dialect.characteristics.join('、')}\n`;
-        prompt += `- 方言常用短语：${dialect.commonPhrases.join('、')}\n`;
+        prompt += `- Dialect Info: ${dialect.name} (${dialect.region})\n`;
+        prompt += `- Dialect Features: ${dialect.characteristics.join(", ")}\n`;
+        prompt += `- Dialect Common Phrases: ${dialect.commonPhrases.join(", ")}\n`;
         if (dialect.slangWords.length > 0) {
-          prompt += `- 方言词汇：${dialect.slangWords.join('、')}\n`;
+          prompt += `- Dialect Vocabulary: ${dialect.slangWords.join(", ")}\n`;
         }
         if (dialect.grammarPatterns.length > 0) {
-          prompt += `- 方言语法特点：${dialect.grammarPatterns.join('、')}\n`;
+          prompt += `- Dialect Grammar Features: ${dialect.grammarPatterns.join(", ")}\n`;
         }
       }
     }
 
-    prompt += `- 表现强度：${intensity}/5（强度越高，角色特征越明显）\n`;
+    prompt += `- Performance Intensity: ${intensity}/5 (higher intensity = more prominent character features)\n`;
 
     if (context) {
-      prompt += `- 特殊上下文：${context}\n`;
+      prompt += `- Special Context: ${context}\n`;
     }
 
-    prompt += `\n请完全沉浸在这个角色中，用${character}的语气和风格重新表达原文。`;
+    prompt += `\nPlease fully immerse yourself in this character and re-express the original text in ${character}'s tone and style.`;
 
     return prompt;
   }
@@ -364,7 +517,9 @@ export class Cosplay {
     if (response && typeof response === "object") {
       // Handle MCP response format
       if ("content" in response && Array.isArray(response.content)) {
-        const textContent = response.content.find((item: any) => item.type === "text");
+        const textContent = response.content.find(
+          (item: { type: string; text?: string }) => item.type === "text",
+        );
         if (textContent && "text" in textContent) {
           return textContent.text;
         }
@@ -375,6 +530,90 @@ export class Cosplay {
       }
     }
     return null;
+  }
+
+  // Add foreign character native language catchphrase feature
+  private addNativeLanguageCatchphrase(
+    text: string,
+    character: string,
+    intensity: number,
+  ): string {
+    const foreignCharacters: Record<
+      string,
+      { catchphrases: string[]; probability: number }
+    > = {
+      奥特曼: {
+        catchphrases: [
+          "シャイニング！",
+          "ウルトラマン！",
+          "光の国！",
+          "スペシウム光線！",
+        ],
+        probability: 0.3,
+      },
+      特朗普: {
+        catchphrases: [
+          "Make America Great Again!",
+          "Tremendous!",
+          "Believe me!",
+          "Sad!",
+          "Fake news!",
+        ],
+        probability: 0.4,
+      },
+      米莱: {
+        catchphrases: [
+          "¡Libertad!",
+          "¡Viva la libertad!",
+          "¡No hay alternativa!",
+          "¡Abajo el socialismo!",
+        ],
+        probability: 0.3,
+      },
+      Jack: {
+        catchphrases: [
+          "I top your lung!",
+          "You are Dao Ge?",
+          "I am international killer!",
+        ],
+        probability: 0.5,
+      },
+    };
+
+    const charConfig = foreignCharacters[character];
+    if (!charConfig) {
+      return text; // If not a foreign character, return original text directly
+    }
+
+    // Adjust probability based on intensity
+    const adjustedProbability = charConfig.probability * (intensity / 5);
+
+    if (Math.random() < adjustedProbability) {
+      const catchphrase =
+        charConfig.catchphrases[
+          Math.floor(Math.random() * charConfig.catchphrases.length)
+        ];
+
+      // Randomly decide insertion position (beginning, end, or middle)
+      const position = Math.random();
+      if (position < 0.4) {
+        return catchphrase + "！" + text;
+      } else if (position < 0.7) {
+        return text + " " + catchphrase + "！";
+      } else {
+        // Insert into middle of sentence
+        const words = text.split("，");
+        if (words.length > 1) {
+          const insertIndex =
+            Math.floor(Math.random() * (words.length - 1)) + 1;
+          words.splice(insertIndex, 0, catchphrase + "！");
+          return words.join("，");
+        }
+        return text + " " + catchphrase + "！";
+      }
+    }
+
+    return text;
   }
 
   // Content safety check related methods
@@ -392,10 +631,15 @@ export class Cosplay {
   }
 
   getAvailableCharacters() {
-    return ["enthusiastic", "sarcastic", "professional", ...this.getAllCharacters().map(c => c.name)];
+    return [
+      "enthusiastic",
+      "sarcastic",
+      "professional",
+      ...this.getAllCharacters().map((c) => c.name),
+    ];
   }
 
-  // 新增：角色管理功能
+  // New: Character management functionality
   getAllCharacters() {
     return this.personalityManager.getAllCharacters();
   }
@@ -404,7 +648,7 @@ export class Cosplay {
     return this.personalityManager.getCharacterProfile(name);
   }
 
-  addCharacter(character: any) {
+  addCharacter(character: CharacterProfile) {
     return this.personalityManager.addCharacter(character);
   }
 
@@ -420,55 +664,69 @@ export class Cosplay {
     return this.personalityManager.removeCharacter(name);
   }
 
-  // 新增：动态角色生成功能
+  // New: Dynamic character generation functionality
   async generateCharacter(request: CharacterGenerationRequest) {
     // Check character cache first
-    const cacheKey = `${request.characterName}-${request.description || ''}-${request.intensity || 3}`;
+    const cacheKey = `${request.characterName}-${request.description || ""}-${request.intensity || 3}`;
     const cached = this.characterCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < this.characterCacheTTL) {
-      return cached.character;
+      return {
+        success: true,
+        character: cached.character,
+      };
     }
 
     // Generate character dynamically
-    const result = await this.dynamicCharacterGenerator.generateCharacter(request);
+    const result =
+      await this.dynamicCharacterGenerator.generateCharacter(request);
 
     // Cache the result if successful
-    if (result.success) {
+    if (result.success && result.character) {
       this.characterCache.set(cacheKey, {
-        character: result,
-        timestamp: Date.now()
+        character: result.character,
+        timestamp: Date.now(),
       });
     }
 
     return result;
   }
 
-  // 清理角色缓存
+  // Clear character cache
   clearCharacterCache() {
     this.characterCache.clear();
   }
 
-  // 方言查询功能
-  async queryCharacterDialect(characterName: string, description?: string, context?: string) {
+  // Dialect query functionality
+  async queryCharacterDialect(
+    characterName: string,
+    description?: string,
+    context?: string,
+  ) {
     const request: DialectQueryRequest = {
       characterName,
       characterDescription: description,
-      characterBackground: context
+      characterBackground: context,
     };
 
     return await this.dialectService.queryDialect(request);
   }
 
-  // 获取角色缓存统计
+  // Get character cache statistics
   getCharacterCacheStats() {
     const totalEntries = this.characterCache.size;
-    const expiredEntries = Array.from(this.characterCache.values())
-      .filter(entry => Date.now() - entry.timestamp > this.characterCacheTTL).length;
+    const expiredEntries = Array.from(this.characterCache.values()).filter(
+      (entry) => Date.now() - entry.timestamp > this.characterCacheTTL,
+    ).length;
 
     return {
       totalCacheEntries: totalEntries,
       expiredEntries: expiredEntries,
-      cacheHitRate: totalEntries > 0 ? ((totalEntries - expiredEntries) / totalEntries * 100).toFixed(2) + '%' : '0%'
+      cacheHitRate:
+        totalEntries > 0
+          ? (((totalEntries - expiredEntries) / totalEntries) * 100).toFixed(
+              2,
+            ) + "%"
+          : "0%",
     };
   }
 
@@ -480,7 +738,7 @@ export class Cosplay {
     this.configManager.updateConfig(updates);
   }
 
-  // 缓存性能统计
+  // Cache performance statistics
   getCachePerformance() {
     return this.getCacheStats();
   }

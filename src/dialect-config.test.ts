@@ -12,7 +12,7 @@ describe("DialectConfig", () => {
         pronunciationNotes: ["九声六调", "入声保留"],
         slangWords: ["靓仔", "靓女", "食咗飯未"],
         grammarPatterns: ["形容词后置", "量词特殊"],
-        exampleSentences: ["你好吗？", "今日天气几好。"]
+        exampleSentences: ["你好吗？", "今日天气几好。"],
       };
 
       expect(validDialect.name).toBe("广东话");
@@ -34,7 +34,7 @@ describe("DialectConfig", () => {
         pronunciationNotes: [],
         slangWords: [],
         grammarPatterns: [],
-        exampleSentences: []
+        exampleSentences: [],
       };
 
       expect(minimalDialect.name).toBe("标准官话");
@@ -58,7 +58,7 @@ describe("DialectConfig", () => {
         pronunciationNotes: ["客家声调", "古音保留"],
         slangWords: ["天父", "天国", "清妖"],
         grammarPatterns: ["使用古典句式", "宗教用语"],
-        exampleSentences: ["天父下凡，我乃真命天子", "清妖必灭，天国必兴"]
+        exampleSentences: ["天父下凡，我乃真命天子", "清妖必灭，天国必兴"],
       };
 
       expect(hongDialect.name).toBe("广东客家话");
@@ -82,7 +82,7 @@ describe("DialectConfig", () => {
         pronunciationNotes: ["粤语声调", "中山口音"],
         slangWords: ["革命", "共和"],
         grammarPatterns: ["现代汉语", "政治术语"],
-        exampleSentences: ["革命尚未成功，同志仍需努力"]
+        exampleSentences: ["革命尚未成功，同志仍需努力"],
       };
 
       expect(sunDialect.name).toBe("广东中山话");
@@ -92,7 +92,9 @@ describe("DialectConfig", () => {
       expect(sunDialect.commonPhrases).toContain("自由");
       expect(sunDialect.slangWords).toContain("共和");
       expect(sunDialect.grammarPatterns).toContain("政治术语");
-      expect(sunDialect.exampleSentences).toContain("革命尚未成功，同志仍需努力");
+      expect(sunDialect.exampleSentences).toContain(
+        "革命尚未成功，同志仍需努力",
+      );
     });
   });
 
@@ -106,7 +108,7 @@ describe("DialectConfig", () => {
         pronunciationNotes: ["卷舌音", "儿化音"],
         slangWords: ["摆龙门阵", "瓜娃子"],
         grammarPatterns: ["语气词丰富"],
-        exampleSentences: ["今天天气巴适得很！", "这个菜要得！"]
+        exampleSentences: ["今天天气巴适得很！", "这个菜要得！"],
       };
 
       expect(unicodeDialect.name).toContain("🌶️");
@@ -123,7 +125,7 @@ describe("DialectConfig", () => {
         pronunciationNotes: [],
         slangWords: [],
         grammarPatterns: [],
-        exampleSentences: []
+        exampleSentences: [],
       };
 
       expect(emptyDialect.characteristics).toEqual([]);

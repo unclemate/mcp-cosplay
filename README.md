@@ -104,7 +104,7 @@ Add cosplay character and personality to text
 
 **Parameters:**
 - `text` (required): Text to cosplay
-- `character` (optional): Character type (`trump`, `enthusiastic`, `sarcastic`, `professional`)
+- `character` (optional): Character type (`enthusiastic`, `sarcastic`, `professional`, or custom characters)
 - `intensity` (optional): Intensity level (0-5, default: 3)
 - `context` (optional): Context for better character analysis
 
@@ -112,13 +112,69 @@ Add cosplay character and personality to text
 ```json
 {
   "text": "Your code looks great!",
-  "personality": "enthusiastic",
+  "character": "enthusiastic",
   "intensity": 4
 }
 ```
 
-### get_personalities
-Get available personality types
+### cosplay_text_simple
+Add cosplay character and personality to text (returns processed text only)
+
+**Parameters:**
+- `text` (required): Text to cosplay
+- `character` (optional): Character type (`enthusiastic`, `sarcastic`, `professional`, or custom characters)
+- `intensity` (optional): Intensity level (0-5, default: 3)
+- `context` (optional): Context for better character analysis
+
+### get_characters
+Get available character types
+
+### get_all_characters
+Get all available character profiles including custom characters
+
+### get_character_profile
+Get detailed profile for a specific character
+
+**Parameters:**
+- `name` (required): Character name
+
+### add_character
+Add a new custom character profile
+
+**Parameters:**
+- `name` (required): Character name
+- `description` (required): Character description
+- `personality` (required): Personality configuration
+- `examples` (optional): Example phrases
+- `category` (optional): Character category
+
+### remove_character
+Remove a custom character profile
+
+**Parameters:**
+- `name` (required): Character name to remove
+
+### search_characters
+Search characters by name, description, or category
+
+**Parameters:**
+- `query` (required): Search query
+
+### get_characters_by_category
+Get characters filtered by category
+
+**Parameters:**
+- `category` (required): Category to filter by
+
+### generate_character
+Dynamically generate character personality using LLM
+
+**Parameters:**
+- `characterName` (required): Name of the character to generate
+- `description` (optional): Description of the character
+- `context` (optional): Context for character generation
+- `intensity` (optional): Intensity level (0-5)
+- `examples` (optional): Example phrases
 
 ### get_config
 Get current configuration
@@ -130,30 +186,62 @@ Update configuration
 - `defaultPersonality`: Default personality type
 - `defaultIntensity`: Default intensity level
 
+### check_content_safety
+Check content safety for violations
+
+**Parameters:**
+- `text` (required): Text to check for safety violations
+
+### get_content_safety_config
+Get current content safety configuration
+
+### update_content_safety_config
+Update content safety configuration
+
+**Parameters:**
+- `enabled`: Enable/disable content safety checks
+- `checkMethod`: Method to use for content checking (`llm` or `keyword`)
+- `confidenceThreshold`: Confidence threshold for violation detection
+- `strictMode`: Enable strict mode for content checking
+
 ## 🤔 Core Concept
 
 The `MCP Cosplay` server acts as a "character translator" or "personality filter". It receives standard LLM-generated responses, then performs secondary processing based on your configured rules or character parameters, adding character-specific traits, tone words, and personality before returning the processed text.
 
-## 🛠️ Key Technologies
+## 🛠️ Key Features
 
-Based on research, MCP servers' core capabilities lie in securely connecting external resources and tools, and can leverage the Sampling mechanism to call LLM capabilities on the server side for data processing.
+### Character Management System
+- **Built-in Characters**: Pre-configured personalities (`enthusiastic`, `sarcastic`, `professional`)
+- **Custom Characters**: Add and manage your own character profiles with detailed personality traits
+- **Dynamic Generation**: Generate character personalities using LLM based on descriptions
+- **Character Search**: Search and filter characters by name, description, or category
 
-### Sentiment Analysis as Foundation
-Integrate a sentiment analysis tool (analyze_sentiment) within the MCP server. This tool can determine the emotional tendency of the original text (positive, negative, neutral), providing a basis for subsequent personalized rewriting.
+### Content Safety System
+- **Configurable Safety Checks**: Enable/disable content safety monitoring
+- **Multiple Detection Methods**: Choose between LLM-based or keyword-based detection
+- **Adjustable Sensitivity**: Set confidence thresholds and strict mode options
+- **Real-time Monitoring**: Check content for safety violations before processing
 
-### Personalization and Emotional Enhancement
-After obtaining the emotional tone of the original text, another core tool (e.g., add_personality) can be used. This tool will rewrite the text based on preset personalities (such as "enthusiastic", "cynical", "humorous"), sentiment analysis results, and your configured rules (such as "appropriately adding F words in negative emotions").
+### Advanced Text Processing
+- **Emotion Analysis**: Analyze emotional tone and context of input text
+- **Personality Application**: Apply character-specific traits, speech patterns, and tone
+- **Intensity Control**: Adjust personality strength from subtle (0) to intense (5)
+- **Context Awareness**: Consider conversation context for better character portrayal
 
-### Leveraging Sampling to Call LLM
-Text rewriting and emotional enhancement can also be seen as a "generation" task. Through the Sampling mechanism, the text that needs rewriting and rewriting requirements (system_prompt) can be sent to the LLM, allowing a more powerful model to complete fine-grained wording modifications and tone word additions, rather than relying on simple string replacement rules.
+### Dialect Support
+- **Multiple Dialects**: Support for different linguistic styles and regional variations
+- **Cultural Adaptation**: Adapt character personalities to different cultural contexts
+- **Language Style Matching**: Maintain consistency across different language styles
 
 ## ⚠️ Important Considerations
 
 ### Content Safety and Appropriateness
-This is the biggest challenge. Frequent or inappropriate use of "F words" may offend users or make the product appear unprofessional. Strong recommendations:
+The server includes built-in content safety mechanisms that cannot be disabled. These features ensure responsible usage:
 
-- **Make it configurable**: Don't hardcode it. Provide users or administrators with a switch or intensity slider (e.g., personality_level: 0-5, where 0 is no personality and 5 is intense style full of "F words"), letting users decide whether they need "personalization" and to what degree.
-- **Context-aware**: Ensure automatic disabling or significant reduction of this personalization in certain serious or sensitive conversation scenarios (e.g., when discussing medical, legal, or financial advice), maintaining professional and accurate responses.
+- **Configurable Safety Levels**: Adjust sensitivity thresholds and detection methods
+- **Context-aware Processing**: Automatic adaptation based on conversation context
+- **Professional Standards**: Maintains appropriate language in formal contexts
+- **Real-time Monitoring**: Continuous safety checks during processing
 
 ### Performance and Latency
 Every response requires additional processing by the MCP server (sentiment analysis -> personalization rewriting), which will increase system response time. You need to optimize your code to ensure efficient processing flow.
