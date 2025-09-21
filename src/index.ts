@@ -14,6 +14,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { Cosplay } from "./cosplay.js";
+import { CharacterGenerationRequest } from "./dynamic-character-generator.js";
 
 // Create server instance
 const server = new Server(
@@ -37,9 +38,25 @@ cosplay.setServer(server);
 // Define schemas
 const CosplayRequestSchema = z.object({
   text: z.string().min(1),
-  character: z.enum(["enthusiastic", "sarcastic", "professional"]).optional(),
+  character: z.string().min(1).optional(),
   intensity: z.number().min(0).max(5).optional(),
   context: z.string().optional(),
+});
+
+const CharacterProfileSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().min(1),
+  personality: z.object({
+    signaturePhrases: z.array(z.string()),
+    toneWords: z.array(z.string()),
+    attitude: z.string(),
+    speechPatterns: z.array(z.string()),
+    backgroundContext: z.string(),
+    emojiPreferences: z.array(z.string()),
+    languageStyle: z.string(),
+  }),
+  examples: z.array(z.string()).optional(),
+  category: z.string().optional(),
 });
 
 // Register tools
@@ -48,7 +65,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "cosplay_text",
-        description: "Add cosplay character and personality to text",
+        description: "Add cosplay character and personality to text. Supports both built-in personalities (enthusiastic, sarcastic, professional) and custom characters.",
         inputSchema: {
           type: "object",
           properties: {
@@ -58,8 +75,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             character: {
               type: "string",
-              enum: ["enthusiastic", "sarcastic", "professional"],
-              description: "Character type to apply",
+              description: "Character name or personality type to apply. Built-in types: enthusiastic, sarcastic, professional. Custom characters can be added using add_character tool.",
             },
             intensity: {
               type: "number",
@@ -81,6 +97,135 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: "object",
           properties: {},
+        },
+      },
+      {
+        name: "get_all_characters",
+        description: "Get all available character profiles including custom characters",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
+        name: "get_character_profile",
+        description: "Get detailed profile for a specific character",
+        inputSchema: {
+          type: "object",
+          properties: {
+            name: {
+              type: "string",
+              description: "Character name",
+            },
+          },
+          required: ["name"],
+        },
+      },
+      {
+        name: "add_character",
+        description: "Add a new custom character profile",
+        inputSchema: {
+          type: "object",
+          properties: {
+            name: {
+              type: "string",
+              description: "Character name",
+            },
+            description: {
+              type: "string",
+              description: "Character description",
+            },
+            personality: {
+              type: "object",
+              properties: {
+                signaturePhrases: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Signature phrases the character uses",
+                },
+                toneWords: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Common tone words",
+                },
+                attitude: {
+                  type: "string",
+                  description: "Character attitude (e.g., superior, contemplative, critical)",
+                },
+                speechPatterns: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Speech patterns and styles",
+                },
+                backgroundContext: {
+                  type: "string",
+                  description: "Background context for the character",
+                },
+                emojiPreferences: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Preferred emojis",
+                },
+                languageStyle: {
+                  type: "string",
+                  description: "Language style description",
+                },
+              },
+              required: ["signaturePhrases", "toneWords", "attitude", "speechPatterns", "backgroundContext", "emojiPreferences", "languageStyle"],
+            },
+            examples: {
+              type: "array",
+              items: { type: "string" },
+              description: "Example phrases or dialogues",
+            },
+            category: {
+              type: "string",
+              description: "Character category (e.g., celebrity, historical, fictional)",
+            },
+          },
+          required: ["name", "description", "personality"],
+        },
+      },
+      {
+        name: "search_characters",
+        description: "Search characters by name, description, or category",
+        inputSchema: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "Search query",
+            },
+          },
+          required: ["query"],
+        },
+      },
+      {
+        name: "get_characters_by_category",
+        description: "Get characters filtered by category",
+        inputSchema: {
+          type: "object",
+          properties: {
+            category: {
+              type: "string",
+              description: "Category to filter by",
+            },
+          },
+          required: ["category"],
+        },
+      },
+      {
+        name: "remove_character",
+        description: "Remove a custom character profile",
+        inputSchema: {
+          type: "object",
+          properties: {
+            name: {
+              type: "string",
+              description: "Character name to remove",
+            },
+          },
+          required: ["name"],
         },
       },
       {
@@ -161,6 +306,55 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
         },
       },
+      {
+        name: "generate_character",
+        description: "Dynamically generate character personality using LLM",
+        inputSchema: {
+          type: "object",
+          properties: {
+            characterName: {
+              type: "string",
+              description: "Name of the character to generate",
+            },
+            description: {
+              type: "string",
+              description: "Optional description of the character",
+            },
+            context: {
+              type: "string",
+              description: "Optional context for character generation",
+            },
+            intensity: {
+              type: "number",
+              minimum: 0,
+              maximum: 5,
+              description: "Optional intensity level (0-5)",
+            },
+            examples: {
+              type: "array",
+              items: { type: "string" },
+              description: "Optional example phrases or dialogues",
+            },
+          },
+          required: ["characterName"],
+        },
+      },
+      {
+        name: "clear_character_cache",
+        description: "Clear the character generation cache",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
+        name: "get_character_cache_stats",
+        description: "Get character cache statistics",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
     ],
   };
 });
@@ -174,7 +368,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const parsed = CosplayRequestSchema.parse(args);
         const result = await cosplay.cosplayText({
           text: parsed.text,
-          character: parsed.character,
+          character: parsed.character as any,
           intensity: parsed.intensity,
           context: parsed.context,
         });
@@ -197,6 +391,144 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: "text",
               text: JSON.stringify({ characters }, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "get_all_characters": {
+        const characters = cosplay.getAllCharacters();
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({ characters }, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "get_character_profile": {
+        const name = args?.name;
+        if (!name) {
+          throw new Error("Character name is required");
+        }
+
+        const profile = cosplay.getCharacterProfile(name as string);
+        if (!profile) {
+          throw new Error(`Character "${name}" not found`);
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({ profile }, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "add_character": {
+        if (!args) {
+          throw new Error("Character parameters are required");
+        }
+
+        const parsed = CharacterProfileSchema.parse(args);
+        cosplay.addCharacter(parsed);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  message: `Character "${parsed.name}" added successfully`,
+                  character: parsed,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+
+      case "search_characters": {
+        const query = args?.query;
+        if (!query) {
+          throw new Error("Search query is required");
+        }
+
+        const characters = cosplay.searchCharacters(query as string);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  query,
+                  characters,
+                  total: characters.length,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+
+      case "get_characters_by_category": {
+        const category = args?.category;
+        if (!category) {
+          throw new Error("Category is required");
+        }
+
+        const characters = cosplay.getCharactersByCategory(category as string);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  category,
+                  characters,
+                  total: characters.length,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+
+      case "remove_character": {
+        const name = args?.name;
+        if (!name) {
+          throw new Error("Character name is required");
+        }
+
+        const success = cosplay.removeCharacter(name as string);
+        if (!success) {
+          throw new Error(`Character "${name}" not found`);
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  message: `Character "${name}" removed successfully`,
+                },
+                null,
+                2,
+              ),
             },
           ],
         };
@@ -298,6 +630,82 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 {
                   message: "Content safety configuration updated successfully",
                   config: updatedConfig,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+
+      case "generate_character": {
+        if (!args) {
+          throw new Error("Character name is required");
+        }
+
+        const { characterName, description, context, intensity, examples } = args as any;
+        if (!characterName) {
+          throw new Error("Character name is required");
+        }
+
+        const request: CharacterGenerationRequest = {
+          characterName: characterName as string,
+          description: description as string,
+          context: context as string,
+          intensity: intensity as number,
+          examples: examples as string[],
+        };
+
+        const result = await cosplay.generateCharacter(request);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  message: "Character generated successfully",
+                  result,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+
+      case "clear_character_cache": {
+        cosplay.clearCharacterCache();
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  message: "Character cache cleared successfully",
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+
+      case "get_character_cache_stats": {
+        const stats = cosplay.getCharacterCacheStats();
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  message: "Character cache statistics",
+                  stats,
                 },
                 null,
                 2,

@@ -1,6 +1,6 @@
 {
   "defaultPersonality": "sarcastic",
-  "defaultIntensity": 5,
+  "defaultIntensity": 3,
   "maxIntensity": 5,
   "contentSafety": {
     "enabled": false,
@@ -8,5 +8,98 @@
     "strictMode": false,
     "customRules": [],
     "checkMethod": "keyword"
+  },
+  "personalities": {
+    "sarcastic": {
+      "signaturePhrases": [
+        "呵呵",
+        "我告诉你",
+        "有钱就是任性",
+        "你们这些凡人",
+        "我爸是王健林"
+      ],
+      "toneWords": [
+        "啧",
+        "哼",
+        "呵",
+        "切",
+        "哦"
+      ],
+      "attitude": "superior",
+      "speechPatterns": [
+        "装逼",
+        "嘲讽",
+        "炫耀",
+        "轻蔑"
+      ],
+      "backgroundContext": "富二代，万达集团继承人，说话嚣张跋扈",
+      "emojiPreferences": [
+        "🙃",
+        "👀",
+        "🎭",
+        "💰"
+      ],
+      "languageStyle": "casual_arrogant"
+    },
+    "enthusiastic": {
+      "signaturePhrases": [
+        "太棒了！",
+        "厉害！",
+        "我太喜欢了！",
+        "简直完美！"
+      ],
+      "toneWords": [
+        "哇",
+        "哦",
+        "天呐",
+        "太",
+        "真"
+      ],
+      "attitude": "excited",
+      "speechPatterns": [
+        "赞美",
+        "鼓励",
+        "热情",
+        "积极"
+      ],
+      "backgroundContext": "充满活力的人，对什么都充满热情",
+      "emojiPreferences": [
+        "😊",
+        "🎉",
+        "✨",
+        "🔥"
+      ],
+      "languageStyle": "energetic"
+    },
+    "professional": {
+      "signaturePhrases": [
+        "从专业角度",
+        "根据我的经验",
+        "建议",
+        "综上所述"
+      ],
+      "toneWords": [
+        "嗯",
+        "好的",
+        "确实",
+        "不过",
+        "因此"
+      ],
+      "attitude": "formal",
+      "speechPatterns": [
+        "分析",
+        "解释",
+        "建议",
+        "总结"
+      ],
+      "backgroundContext": "专业人士，做事严谨有条理",
+      "emojiPreferences": [
+        "📊",
+        "💼",
+        "🎯",
+        "📈"
+      ],
+      "languageStyle": "formal_business"
+    }
   }
 }

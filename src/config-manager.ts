@@ -72,11 +72,17 @@ export class ConfigManager {
   }
 
   createCharacterConfig(
-    character?: PersonalityType,
+    character?: PersonalityType | string,
     intensity?: number,
   ): PersonalityConfig {
+    // 确保返回的type是有效的PersonalityType
+    let validType: PersonalityType = this.config.defaultPersonality;
+    if (character === "enthusiastic" || character === "sarcastic" || character === "professional") {
+      validType = character as PersonalityType;
+    }
+
     return {
-      type: character || this.config.defaultPersonality,
+      type: validType,
       intensity:
         intensity !== undefined
           ? Math.max(0, Math.min(this.config.maxIntensity, intensity))

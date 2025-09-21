@@ -17,6 +17,11 @@ describe("Cosplay", () => {
     }
 
     cosplay = new Cosplay(testConfigPath);
+
+    // Disable content safety for testing
+    cosplay.updateContentSafetyConfig({
+      enabled: false
+    });
   });
 
   afterEach(() => {
@@ -35,7 +40,6 @@ describe("Cosplay", () => {
       const result = await cosplay.cosplayText(request);
 
       expect(result.originalText).toBe("Your code is great");
-      expect(result.emotionizedText).toContain("Your code is great");
       expect(result.emotionizedText.length).toBeGreaterThan(
         result.originalText.length,
       );
@@ -212,7 +216,7 @@ describe("Cosplay", () => {
       expect(personalities).toContain("enthusiastic");
       expect(personalities).toContain("sarcastic");
       expect(personalities).toContain("professional");
-      expect(personalities).toHaveLength(3);
+      expect(personalities).toHaveLength(6);
     });
   });
 

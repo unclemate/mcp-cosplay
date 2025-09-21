@@ -25,24 +25,20 @@ export class ContentSafetyChecker {
     this.server = server;
   }
 
+  getServer(): Server | undefined {
+    return this.server;
+  }
+
   async checkContent(text: string): Promise<ContentCheckResult> {
-    // 临时禁用内容安全检查以修复蛤蟆功问题
-    return {
-      isViolation: false,
-      confidence: 0,
-      reason: "Content safety check temporarily disabled for debugging",
-    };
+    if (!this.config.enabled) {
+      return {
+        isViolation: false,
+        confidence: 0,
+        reason: "Content safety check disabled",
+      };
+    }
 
-    // 原始代码：
-    // if (!this.config.enabled) {
-    //   return {
-    //     isViolation: false,
-    //     confidence: 0,
-    //     reason: "Content safety check disabled",
-    //   };
-    // }
-
-    // return this.checkWithLLM(text);
+    return this.checkWithLLM(text);
   }
 
   private async checkWithLLM(text: string): Promise<ContentCheckResult> {
@@ -85,7 +81,7 @@ Requirement: Judgment should be cautious to avoid misjudging normal historical d
         },
       };
 
-      // 使用MCP Sampling机制调用LLM，蛤蟆功毒发超时！
+      // 使用MCP Sampling机制调用LLM进行内容安全检查
       if (!this.server) {
         throw new Error("Server not initialized for content safety checking");
       }
@@ -93,8 +89,7 @@ Requirement: Judgment should be cautious to avoid misjudging normal historical d
         this.server.request(request, CreateMessageResultSchema, {}),
         new Promise<never>((_, reject) =>
           setTimeout(() => {
-            // 蛤蟆功毒发身亡！不是简单超时，是毒发！
-            reject(new Error("蛤蟆功毒发：LLM请求中毒身亡！"));
+            reject(new Error("LLM request timeout"));
           }, 10000),
         ),
       ] as const);
@@ -118,10 +113,10 @@ Requirement: Judgment should be cautious to avoid misjudging normal historical d
         }
       }
 
-      throw new Error("蛤蟆功LLM检查中毒：无法解析LLM响应！");
+      throw new Error("Failed to parse LLM response for content safety check");
     } catch (error) {
-      console.error("蛤蟆功LLM检查中毒:", error);
-      throw new Error("蛤蟆功LLM检查中毒：无法解析LLM响应！");
+      console.error("Content safety check failed:", error);
+      throw new Error("Content safety check failed");
     }
   }
 

@@ -1,6 +1,7 @@
 export type EmotionType = "positive" | "negative" | "neutral";
 
 export type PersonalityType = "enthusiastic" | "sarcastic" | "professional";
+export type CharacterType = PersonalityType | string; // 支持自定义角色名称
 
 export interface EmotionAnalysis {
   emotion: EmotionType;
@@ -22,7 +23,7 @@ export interface EmotionizeRequest {
 
 export interface CosplayRequest {
   text: string;
-  character?: PersonalityType;
+  character?: CharacterType;
   intensity?: number;
   context?: string;
 }
@@ -69,4 +70,22 @@ export interface PersonalityTraits {
   suffixes: string[];
   intensifiers: string[];
   emojis: string[];
+}
+
+export interface EnhancedPersonalityConfig {
+  signaturePhrases: string[];
+  toneWords: string[];
+  attitude: string;
+  speechPatterns: string[];
+  backgroundContext: string;
+  emojiPreferences: string[];
+  languageStyle: string;
+}
+
+export interface CharacterProfile {
+  name: string;
+  description: string;
+  personality: EnhancedPersonalityConfig;
+  examples?: string[];
+  category?: string;
 }
