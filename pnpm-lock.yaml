@@ -15,6 +15,18 @@ importers:
         specifier: ^4.1.9
         version: 4.1.9
     devDependencies:
+      '@types/chai':
+        specifier: ^5.2.2
+        version: 5.2.2
+      '@types/deep-eql':
+        specifier: ^4.0.2
+        version: 4.0.2
+      '@types/estree':
+        specifier: ^1.0.8
+        version: 1.0.8
+      '@types/json-schema':
+        specifier: ^7.0.15
+        version: 7.0.15
       '@types/node':
         specifier: ^24.5.2
         version: 24.5.2

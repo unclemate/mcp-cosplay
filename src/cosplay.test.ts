@@ -370,7 +370,7 @@ describe("Cosplay", () => {
 
       expect(updatedConfig.enabled).toBe(false);
       expect(updatedConfig.confidenceThreshold).toBe(0.8);
-      expect(updatedConfig.checkMethod).toBe(originalConfig.checkMethod); // unchanged
+      expect(updatedConfig.strictMode).toBe(originalConfig.strictMode); // unchanged
     });
   });
 });
