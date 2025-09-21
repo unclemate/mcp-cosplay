@@ -4,6 +4,10 @@ An MCP (Model Context Protocol) server that adds cosplay characters and personal
 
 **Communication Mode**: Stdio only
 
+## Usage
+
+Simply input `cosplay <a name>`
+
 ## Installation
 
 ### From npm
