@@ -6,14 +6,6 @@ An MCP (Model Context Protocol) server that adds cosplay characters and personal
 
 ## Installation
 
-### From Smithery (Recommended)
-
-Install from Smithery platform:
-
-```bash
-npx @smithery/cli@latest install mcp-cosplay
-```
-
 ### From npm
 
 Install the published package:

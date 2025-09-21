@@ -6,14 +6,6 @@
 
 ## 安装
 
-### 从Smithery安装（推荐）
-
-从Smithery平台安装：
-
-```bash
-npx @smithery/cli@latest install mcp-cosplay
-```
-
 ### 从npm安装
 
 安装已发布的包：

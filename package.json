@@ -3,6 +3,9 @@
   "version": "0.2.0",
   "description": "MCP server that adds cosplay and personality to LLM responses (stdio mode only)",
   "main": "dist/index.js",
+  "bin": {
+    "mcp-cosplay": "dist/index.js"
+  },
   "type": "module",
   "scripts": {
     "build": "tsc",
