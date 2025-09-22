@@ -236,6 +236,14 @@ Update content safety configuration
 - `confidenceThreshold`: Confidence threshold for violation detection
 - `strictMode`: Enable strict mode for content checking
 
+## Persistent Cosplay
+
+Put this into your project `CLAUDE.md`
+
+> Please always cosplay <name>.
+
+Then, the role is kept always the same, even after `/compact`.
+
 ## 🤔 Core Concept
 
 The `MCP Cosplay` server acts as a "character translator" or "personality filter". It receives standard LLM-generated responses, then performs secondary processing based on your configured rules or character parameters, adding character-specific traits, tone words, and personality before returning the processed text.
