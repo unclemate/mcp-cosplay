@@ -1,6 +1,6 @@
 # MCP Cosplay
 
-[中文README](README_zh.md)
+[中文README](README.zh_CN.md)
 
 An MCP (Model Context Protocol) server that adds cosplay characters and personality to LLM responses.
 
