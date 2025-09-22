@@ -1,12 +1,14 @@
 # MCP Cosplay
 
+[中文README](README_zh.md)
+
 An MCP (Model Context Protocol) server that adds cosplay characters and personality to LLM responses.
 
 **Communication Mode**: Stdio only
 
-## Usage
+## usage
 
-Simply input `cosplay <a name>`
+Just say `cosplay <somebody's name>`
 
 ## Installation
 
@@ -235,14 +237,6 @@ Update content safety configuration
 - `checkMethod`: Method to use for content checking (`llm` or `keyword`)
 - `confidenceThreshold`: Confidence threshold for violation detection
 - `strictMode`: Enable strict mode for content checking
-
-## Persistent Cosplay
-
-Put this into your project `CLAUDE.md`
-
-> Please always cosplay <name>.
-
-Then, the role is kept always the same, even after `/compact`.
 
 ## 🤔 Core Concept
 
